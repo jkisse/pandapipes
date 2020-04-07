@@ -4,20 +4,18 @@
 
 import numpy as np
 
-from pandapipes.idx_branch import FROM_NODE, TO_NODE, LENGTH, D, TINIT, AREA, K, RHO, ETA, \
-    VINIT, RE, LAMBDA, LOAD_VEC_NODES, ALPHA, QEXT, TEXT, LOSS_COEFFICIENT as LC, branch_cols, \
-    T_OUT, CP, VINIT_T, FROM_NODE_T, PL, TL, \
-    JAC_DERIV_DP, JAC_DERIV_DP1, JAC_DERIV_DT, JAC_DERIV_DT1, JAC_DERIV_DT_NODE, JAC_DERIV_DV, \
-    JAC_DERIV_DV_NODE, \
-    LOAD_VEC_BRANCHES, LOAD_VEC_BRANCHES_T, LOAD_VEC_NODES_T, ELEMENT_IDX, ACTIVE
-from pandapipes.idx_node import TINIT as TINIT_NODE, L, node_cols
-
-from pandapipes.pipeflow_setup import add_table_lookup, get_lookup, get_table_number
-from pandapipes.properties.fluids import get_fluid
-
 from pandapipes.component_models.abstract_models.branch_models import BranchComponent
 from pandapipes.constants import NORMAL_PRESSURE, GRAVITATION_CONSTANT, NORMAL_TEMPERATURE, \
     P_CONVERSION
+from pandapipes.idx_branch import FROM_NODE, TO_NODE, LENGTH, D, TINIT, AREA, K, RHO, ETA, \
+    VINIT, RE, LAMBDA, LOAD_VEC_NODES, LOSS_COEFFICIENT as LC, T_OUT, CP, PL, JAC_DERIV_DP, \
+    JAC_DERIV_DP1, JAC_DERIV_DV, \
+    JAC_DERIV_DV_NODE, \
+    LOAD_VEC_BRANCHES, ELEMENT_IDX, ACTIVE
+from pandapipes.idx_node import TINIT as TINIT_NODE, L, node_cols, PINIT, HEIGHT, PAMB
+from pandapipes.pipeflow_setup import add_table_lookup, get_lookup, get_table_number
+from pandapipes.properties.fluids import get_fluid
+from pandapipes.component_models.auxiliaries.derivative_toolbox import calc_der_lambda, calc_lambda
 
 try:
     from numba import jit
@@ -200,7 +198,8 @@ class BranchWInternalsComponent(BranchComponent):
 class PipeComponentFrank(BranchWInternalsComponent):
     def calculate_derivatives_hydraulic(cls, net, branch_pit, node_pit, idx_lookups, options):
         """
-        Function which creates derivatives.
+        Function which creates derivatives. Special version for CO2-pipelines with pressure
+        dependent densities from database.
 
         :param net: The pandapipes network
         :type net: pandapipesNet
@@ -223,26 +222,43 @@ class PipeComponentFrank(BranchWInternalsComponent):
         friction_model = options["friction_model"]
         g_const = GRAVITATION_CONSTANT
 
-        rho = branch_component_pit[:, RHO]
-        eta = branch_component_pit[:, ETA]
-        d = branch_component_pit[:, D]
-        k = branch_component_pit[:, K]
-        length = branch_component_pit[:, LENGTH]
         from_nodes = branch_component_pit[:, FROM_NODE].astype(np.int32)
         to_nodes = branch_component_pit[:, TO_NODE].astype(np.int32)
+        p_init_i = node_pit[from_nodes, PINIT]
+        p_init_i1 = node_pit[to_nodes, PINIT]
+        p_init_i_abs = p_init_i + node_pit[from_nodes, PAMB]
+        p_init_i1_abs = p_init_i1 + node_pit[to_nodes, PAMB]
+        height_difference = node_pit[from_nodes, HEIGHT] - node_pit[to_nodes, HEIGHT]
+        length = branch_component_pit[:, LENGTH]
+        dummy = length != 0
+
+        # TODO: calc mean pressure
+        p_m = np.empty_like(p_init_i_abs)
+        mask = p_init_i_abs != p_init_i1_abs
+        p_m[~mask] = p_init_i_abs[~mask]
+        p_m[mask] = 2 / 3 * (p_init_i_abs[mask] ** 3 - p_init_i1_abs[mask] ** 3) \
+                    / (p_init_i_abs[mask] ** 2 - p_init_i1_abs[mask] ** 2)
+
+        # temperature like in calculate_derivatives_thermal
+        t_init_i = node_pit[from_nodes, TINIT_NODE]
+        t_init_i1 = branch_component_pit[:, T_OUT]
+        t_m = (t_init_i1 + t_init_i) / 2
+
+        # rho = branch_component_pit[:, RHO] # TODO: Abhängigkeit von p
+        rho = fluid.get_property("density", p_m, t_m)
+        # eta = branch_component_pit[:, ETA] # TODO: Abhängigkeit von p
+        eta = fluid.get_property("viscosity", p_m, t_m)
+        d = branch_component_pit[:, D]
+        k = branch_component_pit[:, K]
+
+
         loss_coef = branch_component_pit[:, LC]
         t_init = (node_pit[from_nodes, TINIT_NODE] + node_pit[to_nodes, TINIT_NODE]) / 2
         branch_component_pit[:, TINIT] = t_init
         v_init = branch_component_pit[:, VINIT]
 
-        p_init_i = node_pit[from_nodes, PINIT]
-        p_init_i1 = node_pit[to_nodes, PINIT]
-        p_init_i_abs = p_init_i + node_pit[from_nodes, PAMB]
-        p_init_i1_abs = p_init_i1 + node_pit[to_nodes, PAMB]
         v_init2 = v_init * np.abs(v_init)
 
-        height_difference = node_pit[from_nodes, HEIGHT] - node_pit[to_nodes, HEIGHT]
-        dummy = length != 0
         lambda_pipe, re = calc_lambda(v_init, eta, rho, d, k, gas_mode, friction_model, dummy)
         der_lambda_pipe = calc_der_lambda(v_init, eta, rho, d, k, friction_model, lambda_pipe)
         branch_component_pit[:, RE] = re
@@ -267,11 +283,7 @@ class PipeComponentFrank(BranchWInternalsComponent):
             # manual, page 1623
 
             # compressibility settings
-            p_m = np.empty_like(p_init_i_abs)
-            mask = p_init_i_abs != p_init_i1_abs
-            p_m[~mask] = p_init_i_abs[~mask]
-            p_m[mask] = 2 / 3 * (p_init_i_abs[mask] ** 3 - p_init_i1_abs[mask] ** 3) \
-                        / (p_init_i_abs[mask] ** 2 - p_init_i1_abs[mask] ** 2)
+
             comp_fact = get_fluid(net).get_property("compressibility", p_m)
 
             const_lambda = NORMAL_PRESSURE * rho * comp_fact * t_init \
@@ -306,7 +318,7 @@ class PipeComponentFrank(BranchWInternalsComponent):
         branch_component_pit[:, JAC_DERIV_DV_NODE] = mass_flow_dv
         branch_component_pit[:, LOAD_VEC_NODES] = mass_flow_dv * v_init
 
-
+    # TODO: modify to implement density dependency of pressure
     def extract_results(cls, net, options, node_name):
         results = super().extract_results(net, options, node_name)
 

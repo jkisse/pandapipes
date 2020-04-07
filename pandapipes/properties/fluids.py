@@ -208,6 +208,73 @@ class FluidPropertyInterExtra(FluidProperty):
         obj.__dict__.update(d3)
         return obj
 
+class FluidPropertyInter2D(FluidProperty):
+    """
+    Creates Property with interpolated values. from 2 x-y pairs
+    """
+    json_excludes = JSONSerializableClass.json_excludes + ["prop_getter"]
+    prop_getter_entries = {"x1": "x1", "x2": "x2","y": "y", "_fill_value_orig": "fill_value"}
+
+    def __init__(self, x1_values, x2_values, y1_values):
+        """
+
+        :param x_values:
+        :type x_values:
+        :param y_values:
+        :type y_values:
+        :param method:
+        :type method:
+        """
+        super(FluidPropertyInterExtra, self).__init__()
+        # TODO: How is the property name parsed to the prop_getter?
+        # TODO: neue Funktion einbinden für 2x Interpolation
+        self.prop_getter = interpolate_property(x1_values, x2_values, y1_values)
+
+    def get_property(self, arg1, arg2):
+        """
+
+        :param arg:
+        :type arg:
+        :return:
+        :rtype:
+        """
+        return self.prop_getter(arg1, arg2)
+
+    @classmethod
+    def from_path(cls, path, method="interpolate"):
+        """
+        Reads a file with temperature values in the first column, pressure in 2nd column
+         and property values in third column.
+        :param path:
+        :type path:
+        :param method:
+        :type method:
+        :return:
+        :rtype:
+        """
+        values = np.loadtxt(path)
+        database = load_property_library.... # TODO
+        return cls(values[:, 0], values[:, 1], values[:, 2])
+
+    # def to_dict(self):
+    #     d = super(FluidPropertyInterExtra, self).to_dict()
+    #     d.update({k: self.prop_getter.__dict__[k] for k in self.prop_getter_entries.keys()})
+    #     # d.update({"x_values": self.prop_getter.x, "y_values": self.prop_getter.y,
+    #     #           "method": "interpolate_extrapolate"
+    #     #           if self.prop_getter.fill_value == "extrapolate" else None})
+    #     return d
+    #
+    @classmethod
+    def from_dict(cls, d, net): # TODO: Whats's happening?
+        obj = JSONSerializableClass.__new__(cls)
+        d2 = {cls.prop_getter_entries[k]: v for k, v in d.items()
+              if k in cls.prop_getter_entries.keys()}
+        d3 = {k: v for k, v in d.items() if k not in cls.prop_getter_entries.keys()}
+        d3["prop_getter"] = interp1d(**d2)
+        obj.__dict__.update(d3)
+        return obj
+
+
 
 class FluidPropertyConstant(FluidProperty):
     """
