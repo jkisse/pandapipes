@@ -215,6 +215,7 @@ class Pipe(BranchWInternalsComponent):
             p_from = node_pit[from_nodes, PAMB] + node_pit[from_nodes, PINIT] * p_scale
             p_to = node_pit[to_nodes, PAMB] + node_pit[to_nodes, PINIT] * p_scale
             numerator = NORMAL_PRESSURE * pipe_pit[:, TINIT]
+            # TODO update density here as well?
             normfactor_from = numerator * fluid.get_property("compressibility", p_from) \
                               / (p_from * NORMAL_TEMPERATURE)
             normfactor_to = numerator * fluid.get_property("compressibility", p_to) \
