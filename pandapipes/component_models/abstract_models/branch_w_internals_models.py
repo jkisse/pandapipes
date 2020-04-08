@@ -16,6 +16,7 @@ from pandapipes.idx_node import TINIT as TINIT_NODE, L, node_cols, PINIT, HEIGHT
 from pandapipes.pipeflow_setup import add_table_lookup, get_lookup, get_table_number
 from pandapipes.properties.fluids import get_fluid
 from pandapipes.component_models.auxiliaries.derivative_toolbox import calc_der_lambda, calc_lambda
+from pandapipes.toolbox import _sum_by_group
 
 try:
     from numba import jit
@@ -232,7 +233,6 @@ class PipeComponentFrank(BranchWInternalsComponent):
         length = branch_component_pit[:, LENGTH]
         dummy = length != 0
 
-        # TODO: calc mean pressure
         p_m = np.empty_like(p_init_i_abs)
         mask = p_init_i_abs != p_init_i1_abs
         p_m[~mask] = p_init_i_abs[~mask]
@@ -244,9 +244,7 @@ class PipeComponentFrank(BranchWInternalsComponent):
         t_init_i1 = branch_component_pit[:, T_OUT]
         t_m = (t_init_i1 + t_init_i) / 2
 
-        # rho = branch_component_pit[:, RHO] # TODO: Abhängigkeit von p
         rho = fluid.get_property("density", p_m, t_m)
-        # eta = branch_component_pit[:, ETA] # TODO: Abhängigkeit von p
         eta = fluid.get_property("viscosity", p_m, t_m)
         d = branch_component_pit[:, D]
         k = branch_component_pit[:, K]
@@ -266,6 +264,7 @@ class PipeComponentFrank(BranchWInternalsComponent):
         cls.calculate_pressure_lift(net, branch_component_pit, node_pit)
         pl = branch_component_pit[:, PL]
 
+# TODO: which mode to choose for CO2 if rho(p,T) and eta(p,T) are already refreshed from database?
         if not gas_mode:
             branch_component_pit[:, JAC_DERIV_DV] = \
                 rho / (P_CONVERSION * 2) * (length / d * (der_lambda_pipe * v_init2 + 2 *
@@ -284,6 +283,7 @@ class PipeComponentFrank(BranchWInternalsComponent):
 
             # compressibility settings
 
+            # TODO: is compressibility still required if rho has been updated already?
             comp_fact = get_fluid(net).get_property("compressibility", p_m)
 
             const_lambda = NORMAL_PRESSURE * rho * comp_fact * t_init \
