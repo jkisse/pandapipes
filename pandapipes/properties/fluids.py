@@ -424,40 +424,49 @@ def call_lib(fluid):
     :return: Fluid - Chosen fluid with default fluid properties
     :rtype: Fluid
     """
+    if not fluid == "carbondioxide" :
+        def interextra_property(prop):
+            return FluidPropertyInterExtra.from_path(
+                os.path.join(pp_dir, "properties", fluid, prop + ".txt"))
+        liquids = ["water"]
+        gases = ["air", "lgas", "hgas"]
 
-    def interextra_property(prop):
-        return FluidPropertyInterExtra.from_path(
-            os.path.join(pp_dir, "properties", fluid, prop + ".txt"))
+        if fluid == "natural_gas":
+            logger.error("'natural_gas' is ambigious. Please choose 'hgas' or 'lgas' "
+                         "(high- or low caloric natural gas)")
+        if fluid not in liquids and fluid not in gases:
+            raise AttributeError("Fluid '%s' not found in the fluid library. It might not be "
+                                 "implemented yet." % fluid)
 
-    liquids = ["water"]
-    gases = ["air", "lgas", "hgas"]
+        density = interextra_property("density")
+        viscosity = interextra_property("viscosity")
+        heat_capacity = interextra_property("heat_capacity")
 
-    if fluid == "natural_gas":
-        logger.error("'natural_gas' is ambigious. Please choose 'hgas' or 'lgas' "
-                     "(high- or low caloric natural gas)")
-    if fluid not in liquids and fluid not in gases:
-        raise AttributeError("Fluid '%s' not found in the fluid library. It might not be "
-                             "implemented yet." % fluid)
+        der_comps = {"water": 0, "air": -0.001, "lgas": -0.0022, "hgas": -0.0022}
+        der_comp = der_comps[fluid]
+        compressibility = FluidPropertyConstant(1) if der_comp == 0 \
+            else FluidPropertyLinear(der_comp, 1)
+        der_compressibility = FluidPropertyConstant(der_comp)
 
-    density = interextra_property("density")
-    viscosity = interextra_property("viscosity")
-    heat_capacity = interextra_property("heat_capacity")
-
-    der_comps = {"water": 0, "air": -0.001, "lgas": -0.0022, "hgas": -0.0022}
-    der_comp = der_comps[fluid]
-    compressibility = FluidPropertyConstant(1) if der_comp == 0 \
-        else FluidPropertyLinear(der_comp, 1)
-    der_compressibility = FluidPropertyConstant(der_comp)
-
-    phase = "liquid" if fluid in liquids else "gas"
-    return Fluid(fluid, phase, density=density, viscosity=viscosity, heat_capacity=heat_capacity,
-                 compressibility=compressibility, der_compressibility=der_compressibility)
+        phase = "liquid" if fluid in liquids else "gas"
+        return Fluid(fluid, phase, density=density, viscosity=viscosity,
+                     heat_capacity=heat_capacity,
+                     compressibility=compressibility, der_compressibility=der_compressibility)
+    else:
+        return fluid_from_nist_table(fluid)
 
 
-def call_nist(fluid="carbondioxide"):
+
+
+def fluid_from_nist_table(fluid="carbondioxide"):
     """
 
+    :param fluid:
+    :type fluid:
+    :return:
+    :rtype:
     """
+
     def inter2d_property(df, prop):
         return FluidPropertyInter2D.from_df(df, prop)
 
@@ -484,7 +493,7 @@ def call_nist(fluid="carbondioxide"):
                          'Density (kg/m3)': "density",
                          'Cp (J/g*K)': "cp",
                          'Viscosity (Pa*s)': "viscosity",
-                         'Therm. Cond. (W/m*K)': "therm_conductivity"}  # <- = alpha?
+                         'Therm. Cond. (W/m*K)': "therm_conductivity"}
 
         df.rename(new_col_names, axis="columns", inplace=inplace)
         if not inplace:
@@ -498,9 +507,10 @@ def call_nist(fluid="carbondioxide"):
     density = inter2d_property(df, "density")
     viscosity = inter2d_property(df, "viscosity")
     heat_capacity = inter2d_property(df, "cp")
-    compressibility = 1
-    der_compressibility = 0
-    phase = "gas"
+
+    der_compressibility = FluidPropertyConstant(0) # TODO: preliminary, modifications might be required
+    compressibility = FluidPropertyConstant(1) # TODO: preliminary, modifications might be required
+    phase = "gas" # TODO: preliminary, modifications might be required
 
     return Fluid(fluid, phase, density=density, viscosity=viscosity, heat_capacity=heat_capacity,
                  compressibility=compressibility, der_compressibility=der_compressibility)
