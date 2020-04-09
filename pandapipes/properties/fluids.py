@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from pandapipes import pp_dir
 from pandapower.io_utils import JSONSerializableClass
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 
 try:
     import pplog as logging
@@ -210,25 +210,26 @@ class FluidPropertyInterExtra(FluidProperty):
 
 class FluidPropertyInter2D(FluidProperty):
     """
-    Creates Property with interpolated values. from 2 x-y pairs
+    Creates Property with interpolated values for 2 input values x, y
     """
     json_excludes = JSONSerializableClass.json_excludes + ["prop_getter"]
-    prop_getter_entries = {"x1": "x1", "x2": "x2","y": "y", "_fill_value_orig": "fill_value"}
+    prop_getter_entries = {"x": "x", "y": "y", "z": "z", "_fill_value_orig": "fill_value"}
 
-    def __init__(self, x1_values, x2_values, y1_values):
+    def __init__(self, x_values, y_values, z_values):
         """
 
         :param x_values:
         :type x_values:
-        :param y_values:
-        :type y_values:
+        :param z_values:
+        :type z_values:
         :param method:
         :type method:
         """
-        super(FluidPropertyInterExtra, self).__init__()
+        super(FluidPropertyInter2D, self).__init__()
         # TODO: How is the property name parsed to the prop_getter?
-        # TODO: neue Funktion einbinden für 2x Interpolation
-        self.prop_getter = interpolate_property(x1_values, x2_values, y1_values)
+        # TODO: neue Funktion einbinden für 2x Interpolation (*drigende* Empfehlung,
+        #  hier numpy's interp2d zu nutzen)
+        self.prop_getter = interp2d(x_values, y_values, z_values, bounds_error=True)
 
     def get_property(self, arg1, arg2):
         """
@@ -240,21 +241,43 @@ class FluidPropertyInter2D(FluidProperty):
         """
         return self.prop_getter(arg1, arg2)
 
+    # @classmethod
+    # def from_path(cls, path, method="interpolate"):
+    #     """
+    #     Reads a file with temperature values in the first column, pressure in 2nd column
+    #      and property values in third column.
+    #     :param path:
+    #     :type path:
+    #     :param method:
+    #     :type method:
+    #     :return:
+    #     :rtype:
+    #     """
+    #     values = np.loadtxt(path)
+    #     database = load_property_library.... # TODO
+    #     return cls(values[:, 0], values[:, 1], values[:, 2])
+
     @classmethod
-    def from_path(cls, path, method="interpolate"):
+    def from_df(cls, df, prop_column):
         """
-        Reads a file with temperature values in the first column, pressure in 2nd column
-         and property values in third column.
-        :param path:
-        :type path:
-        :param method:
-        :type method:
-        :return:
-        :rtype:
+        Reads a pondas Dataframe as input values for this class.
+        :param df: Table with x (e.g. temperature) values in the first column, y (e.g.
+                    pressure) in 2nd column and z (property) values in 'prop_column' -
+                    column
+        :type df: pandas Dataframe
+        :param prop_column: one of the column names in df
+        :type prop_column: string
+        :return: class instance
+        :rtype: FluidPropertyInter2D
         """
-        values = np.loadtxt(path)
-        database = load_property_library.... # TODO
-        return cls(values[:, 0], values[:, 1], values[:, 2])
+
+        # create a p-T grid:
+        piv = pd.pivot_table(df, values=prop_column, index=["pressure"],
+                             columns=["temperature"])
+        # drop rows with NA, as the destroy interpolate2d
+        piv.dropna(axis='index', inplace=True)
+        return cls(np.array(piv.columns), np.array(piv.index), np.array(piv.values))
+
 
     # def to_dict(self):
     #     d = super(FluidPropertyInterExtra, self).to_dict()
@@ -264,15 +287,15 @@ class FluidPropertyInter2D(FluidProperty):
     #     #           if self.prop_getter.fill_value == "extrapolate" else None})
     #     return d
     #
-    @classmethod
-    def from_dict(cls, d, net): # TODO: Whats's happening?
-        obj = JSONSerializableClass.__new__(cls)
-        d2 = {cls.prop_getter_entries[k]: v for k, v in d.items()
-              if k in cls.prop_getter_entries.keys()}
-        d3 = {k: v for k, v in d.items() if k not in cls.prop_getter_entries.keys()}
-        d3["prop_getter"] = interp1d(**d2)
-        obj.__dict__.update(d3)
-        return obj
+    # @classmethod
+    # def from_dict(cls, d, net): # TODO: Whats's happening?
+    #     obj = JSONSerializableClass.__new__(cls)
+    #     d2 = {cls.prop_getter_entries[k]: v for k, v in d.items()
+    #           if k in cls.prop_getter_entries.keys()}
+    #     d3 = {k: v for k, v in d.items() if k not in cls.prop_getter_entries.keys()}
+    #     d3["prop_getter"] = interp1d(**d2)
+    #     obj.__dict__.update(d3)
+    #     return obj
 
 
 
@@ -431,6 +454,57 @@ def call_lib(fluid):
                  compressibility=compressibility, der_compressibility=der_compressibility)
 
 
+def call_nist(fluid="carbondioxide"):
+    """
+
+    """
+    def inter2d_property(df, prop):
+        return FluidPropertyInter2D.from_df(df, prop)
+
+    def read_NIST_db_from_excel(path, sheets=None):
+        """
+        reads an excel prepare excel file with NIST Data
+        sheets: Sheet names. If none, all sheets are read. Only those ending with "K" (= Kelvin) are
+        further processed.
+        """
+        dic = pd.read_excel(path, sheet_name=sheets)
+        df = pd.DataFrame()
+        for k in dic.keys():
+            if k[-1] == "K":  # sheet with properties' values
+                df = df.append(dic[k], ignore_index=True)
+        df.drop("Temperature (C)", axis="columns", inplace=True)
+        return df
+
+    def rename_NIST_df(df, inplace=False):
+        """
+        introducing common pandapipes names
+        """
+        new_col_names = {'Temperature (K)': "temperature",
+                         'Pressure (bar)': "pressure",
+                         'Density (kg/m3)': "density",
+                         'Cp (J/g*K)': "cp",
+                         'Viscosity (Pa*s)': "viscosity",
+                         'Therm. Cond. (W/m*K)': "therm_conductivity"}  # <- = alpha?
+
+        df.rename(new_col_names, axis="columns", inplace=inplace)
+        if not inplace:
+            return df
+
+    path = os.path.join(pp_dir, "properties", fluid, "CarbonDioxide.xlsx")
+    # sheets = [str(s) + "K" for s in range(263, 373, 10)]
+    df = read_NIST_db_from_excel(path)
+    rename_NIST_df(df, True)
+
+    density = inter2d_property(df, "density")
+    viscosity = inter2d_property(df, "viscosity")
+    heat_capacity = inter2d_property(df, "cp")
+    compressibility = 1
+    der_compressibility = 0
+    phase = "gas"
+
+    return Fluid(fluid, phase, density=density, viscosity=viscosity, heat_capacity=heat_capacity,
+                 compressibility=compressibility, der_compressibility=der_compressibility)
+
 def get_fluid(net):
     """
     This function shows which fluid is used in the net.
@@ -470,3 +544,4 @@ def add_fluid_to_net(net, fluid, overwrite=True):
         return
 
     net["fluid"] = fluid
+

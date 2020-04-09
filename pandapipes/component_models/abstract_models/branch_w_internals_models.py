@@ -196,6 +196,7 @@ class BranchWInternalsComponent(BranchComponent):
         """
         raise NotImplementedError
 
+# TODO: component in eigenes File
 class PipeComponentFrank(BranchWInternalsComponent):
     def calculate_derivatives_hydraulic(cls, net, branch_pit, node_pit, idx_lookups, options):
         """
@@ -238,20 +239,15 @@ class PipeComponentFrank(BranchWInternalsComponent):
         p_m[~mask] = p_init_i_abs[~mask]
         p_m[mask] = 2 / 3 * (p_init_i_abs[mask] ** 3 - p_init_i1_abs[mask] ** 3) \
                     / (p_init_i_abs[mask] ** 2 - p_init_i1_abs[mask] ** 2)
+        t_init = (node_pit[from_nodes, TINIT_NODE] + node_pit[to_nodes, TINIT_NODE]) / 2
 
-        # temperature like in calculate_derivatives_thermal
-        t_init_i = node_pit[from_nodes, TINIT_NODE]
-        t_init_i1 = branch_component_pit[:, T_OUT]
-        t_m = (t_init_i1 + t_init_i) / 2
-
-        rho = fluid.get_property("density", p_m, t_m)
-        eta = fluid.get_property("viscosity", p_m, t_m)
+        rho = fluid.get_property("density", p_m, t_init)
+        eta = fluid.get_property("viscosity", p_m, t_init)
         d = branch_component_pit[:, D]
         k = branch_component_pit[:, K]
 
-
         loss_coef = branch_component_pit[:, LC]
-        t_init = (node_pit[from_nodes, TINIT_NODE] + node_pit[to_nodes, TINIT_NODE]) / 2
+
         branch_component_pit[:, TINIT] = t_init
         v_init = branch_component_pit[:, VINIT]
 
@@ -265,7 +261,8 @@ class PipeComponentFrank(BranchWInternalsComponent):
         pl = branch_component_pit[:, PL]
 
 # TODO: which mode to choose for CO2 if rho(p,T) and eta(p,T) are already refreshed from database?
-        if not gas_mode:
+#         if not gas_mode:
+        if True: # # caution, needs validation -  maybe we need parts from the else clause
             branch_component_pit[:, JAC_DERIV_DV] = \
                 rho / (P_CONVERSION * 2) * (length / d * (der_lambda_pipe * v_init2 + 2 *
                 lambda_pipe * np.abs(v_init)) + 2 * loss_coef * np.abs(v_init))
@@ -277,61 +274,43 @@ class PipeComponentFrank(BranchWInternalsComponent):
 
             branch_component_pit[:, JAC_DERIV_DP] = -1
             branch_component_pit[:, JAC_DERIV_DP1] = 1
-        else:
-            # Formulas for gas pressure loss according to laminar version described in STANET 10
-            # manual, page 1623
-
-            # compressibility settings
-
-            # TODO: is compressibility still required if rho has been updated already?
-            comp_fact = get_fluid(net).get_property("compressibility", p_m)
-
-            const_lambda = NORMAL_PRESSURE * rho * comp_fact * t_init \
-                           / (NORMAL_TEMPERATURE * P_CONVERSION)
-            const_height = rho * NORMAL_TEMPERATURE / (2 * NORMAL_PRESSURE * t_init * P_CONVERSION)
-
-            branch_component_pit[:, LOAD_VEC_BRANCHES] = \
-                -(-p_init_i_abs + p_init_i1_abs - pl + const_lambda * v_init2 * (
-                            lambda_pipe * length / d + loss_coef)
-                  * (p_init_i_abs + p_init_i1_abs) ** (-1)
-                  - const_height * (p_init_i_abs + p_init_i1_abs) * g_const * height_difference)
-
-            branch_component_pit[:, JAC_DERIV_DP] = \
-                -1. - const_lambda * v_init2 * (lambda_pipe * length / d + loss_coef) \
-                * (p_init_i_abs + p_init_i1_abs) ** (-2) \
-                - const_height * g_const * height_difference
-
-            branch_component_pit[:, JAC_DERIV_DP1] = \
-                1. - const_lambda * v_init2 * (lambda_pipe * length / d + loss_coef) \
-                * (p_init_i_abs + p_init_i1_abs) ** (-2) \
-                - const_height * g_const * height_difference
-
-            branch_component_pit[:, JAC_DERIV_DV] = \
-                2 * const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) \
-                * np.abs(v_init) * lambda_pipe * length / d \
-                + const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) * v_init2 \
-                * der_lambda_pipe * length / d \
-                + 2 * const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) * np.abs(v_init) \
-                * loss_coef
+        # else:
+        #     # Formulas for gas pressure loss according to laminar version described in STANET 10
+        #     # manual, page 1623
+        #
+        #     # compressibility settings
+        #
+        #     # TODO: is compressibility still required if rho has been updated already?
+        #     comp_fact = get_fluid(net).get_property("compressibility", p_m)
+        #
+        #     const_lambda = NORMAL_PRESSURE * rho * comp_fact * t_init \
+        #                    / (NORMAL_TEMPERATURE * P_CONVERSION)
+        #     const_height = rho * NORMAL_TEMPERATURE / (2 * NORMAL_PRESSURE * t_init * P_CONVERSION)
+        #
+        #     branch_component_pit[:, LOAD_VEC_BRANCHES] = \
+        #         -(-p_init_i_abs + p_init_i1_abs - pl + const_lambda * v_init2 * (
+        #                     lambda_pipe * length / d + loss_coef)
+        #           * (p_init_i_abs + p_init_i1_abs) ** (-1)
+        #           - const_height * (p_init_i_abs + p_init_i1_abs) * g_const * height_difference)
+        #
+        #     branch_component_pit[:, JAC_DERIV_DP] = \
+        #         -1. - const_lambda * v_init2 * (lambda_pipe * length / d + loss_coef) \
+        #         * (p_init_i_abs + p_init_i1_abs) ** (-2) \
+        #         - const_height * g_const * height_difference
+        #
+        #     branch_component_pit[:, JAC_DERIV_DP1] = \
+        #         1. - const_lambda * v_init2 * (lambda_pipe * length / d + loss_coef) \
+        #         * (p_init_i_abs + p_init_i1_abs) ** (-2) \
+        #         - const_height * g_const * height_difference
+        #
+        #     branch_component_pit[:, JAC_DERIV_DV] = \
+        #         2 * const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) \
+        #         * np.abs(v_init) * lambda_pipe * length / d \
+        #         + const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) * v_init2 \
+        #         * der_lambda_pipe * length / d \
+        #         + 2 * const_lambda * (p_init_i_abs + p_init_i1_abs) ** (-1) * np.abs(v_init) \
+        #         * loss_coef
 
         mass_flow_dv = rho * branch_component_pit[:, AREA]
         branch_component_pit[:, JAC_DERIV_DV_NODE] = mass_flow_dv
         branch_component_pit[:, LOAD_VEC_NODES] = mass_flow_dv * v_init
-
-    # TODO: modify to implement density dependency of pressure
-    def extract_results(cls, net, options, node_name):
-        results = super().extract_results(net, options, node_name)
-
-        f, t = get_lookup(net, "branch", "from_to")[cls.table_name()]
-        fa, ta = get_lookup(net, "branch", "from_to_active")[cls.table_name()]
-
-        placement_table = np.argsort(net[cls.table_name()].index.values)
-        idx_pit = net["_pit"]["branch"][f:t, ELEMENT_IDX]
-        pipe_considered = get_lookup(net, "branch", "active")[f:t]
-        idx_sort, active_pipes, internal_pipes = _sum_by_group(
-            idx_pit, pipe_considered.astype(np.int32), np.ones_like(idx_pit, dtype=np.int32))
-        active_pipes = active_pipes > 0.99
-        placement_table = placement_table[active_pipes]
-        branch_pit = net["_active_pit"]["branch"][fa:ta, :]
-
-        return placement_table, branch_pit, results
