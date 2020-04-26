@@ -226,20 +226,26 @@ class FluidPropertyInter2D(FluidProperty):
         :type method:
         """
         super(FluidPropertyInter2D, self).__init__()
-        # TODO: How is the property name parsed to the prop_getter?
-        # TODO: neue Funktion einbinden für 2x Interpolation (*drigende* Empfehlung,
-        #  hier numpy's interp2d zu nutzen)
+        # initialise interp2d
         self.prop_getter = interp2d(x_values, y_values, z_values, bounds_error=True)
 
-    def get_property(self, arg1, arg2):
+    def get_property(self, arg1, arg2=1):
         """
-
+        arg1 is temperature, arg 2 is pressure
         :param arg:
         :type arg:
         :return:
         :rtype:
         """
-        return self.prop_getter(arg1, arg2)
+        #Problem: interp2d returns a grid with arg1 and arg2 as axes
+        if hasattr(arg1, '__len__') & hasattr(arg2, '__len__'):
+            if (len(arg1)>1) & (len(arg2)>1):
+                # as arg1 and arg2 are values for the same junctions, only the diagonal is relevant
+                return np.diagonal(self.prop_getter(arg1, arg2))
+            else:
+                return self.prop_getter(arg1, arg2)
+        else: # if one arg has no len (= it is a scalar), interp2d return 1-dimensional array
+            return self.prop_getter(arg1, arg2)
 
     # @classmethod
     # def from_path(cls, path, method="interpolate"):
@@ -472,7 +478,7 @@ def fluid_from_nist_table(fluid="carbondioxide"):
 
     def read_NIST_db_from_excel(path, sheets=None):
         """
-        reads an excel prepare excel file with NIST Data
+        reads an prepared excel file with NIST Data
         sheets: Sheet names. If none, all sheets are read. Only those ending with "K" (= Kelvin) are
         further processed.
         """
@@ -484,24 +490,61 @@ def fluid_from_nist_table(fluid="carbondioxide"):
         df.drop("Temperature (C)", axis="columns", inplace=True)
         return df
 
+    def read_NIST_db_from_csv(path):
+        """
+        reads an prepare csv file with NIST Data
+        """
+        # dic = pd.read_excel(path, sheet_name=sheets)
+        df = pd.read_csv(path)
+        # for k in dic.keys():
+        #     if k[-1] == "K":  # sheet with properties' values
+        #         df = df.append(dic[k], ignore_index=True)
+        # df.drop("Temperature (C)", axis="columns", inplace=True)
+        return df
+
     def rename_NIST_df(df, inplace=False):
         """
         introducing common pandapipes names
         """
+        # scaling factors to account for different units
+        scaling_factors = {
+                         # 'Temperature (K)': 1,
+                         'Pressure (MPa)': 10,
+                         # 'Density (kg/m3)': 1,
+                         'Cp (J/g*K)': 10**3,
+                         # 'Viscosity (Pa*s)': 1,
+                         'Viscosity (uPa*s)': 10**(-6),
+                         'Therm. Cond. (W/m*K)': 1
+                        }
         new_col_names = {'Temperature (K)': "temperature",
                          'Pressure (bar)': "pressure",
+                         # 'Pressure (MPa)': "pressure",
                          'Density (kg/m3)': "density",
                          'Cp (J/g*K)': "cp",
+                         # 'Cp (J/mol*K)': "cp",
+                         # 'Viscosity (uPa*s)': "viscosity",
                          'Viscosity (Pa*s)': "viscosity",
                          'Therm. Cond. (W/m*K)': "therm_conductivity"}
-
+        unknown_columns = [c for c in new_col_names.keys() if c not in df.columns]
+        if len(unknown_columns) > 0:
+            logger.warning("These column names were expected in the NIST table but were not "
+                           "found:" + str(unknown_columns))
+        for sf in scaling_factors.keys():
+            if sf in df.columns:
+                df[sf] = df[sf] * scaling_factors[sf]
         df.rename(new_col_names, axis="columns", inplace=inplace)
         if not inplace:
             return df
 
-    path = os.path.join(pp_dir, "properties", fluid, "CarbonDioxide.xlsx")
+    # path = os.path.join(pp_dir, "properties", fluid, "CarbonDioxide.xlsx")
+    path = os.path.join(pp_dir, "properties", fluid, "NIST_summary.csv")
     # sheets = [str(s) + "K" for s in range(263, 373, 10)]
-    df = read_NIST_db_from_excel(path)
+    if path[-4:] =="xlsx":
+        df = read_NIST_db_from_excel(path)
+    elif path[-3:] =="csv":
+        df = read_NIST_db_from_csv(path)
+    else:
+        logger.error("File format of input file is neither xlsx nor csv. Don't know how to read it")
     rename_NIST_df(df, True)
 
     density = inter2d_property(df, "density")
