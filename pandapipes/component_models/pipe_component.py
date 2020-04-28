@@ -212,6 +212,7 @@ class Pipe(PipeComponent2D):
         idx_sort, v_sum, mf_sum, vf_sum, internal_pipes = \
             _sum_by_group(idx_active, v_mps, mf, vf, np.ones_like(idx_active))
 
+        #TODO: work on velocity calculation, v is too low!
         if fluid.is_gas:
             # derived from the ideal gas law
             p_from = node_pit[from_nodes, PAMB] + node_pit[from_nodes, PINIT] * p_scale
