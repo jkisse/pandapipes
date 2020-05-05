@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pandapipes.component_models.pipe_component_pT_prop import PipeComponent2D
+from pandapipes.properties import fluids
 from pandapipes.component_models.auxiliaries.component_toolbox import p_correction_height_air, \
     vinterp
 from pandapipes.component_models.junction_component import Junction
@@ -213,13 +214,12 @@ class Pipe(PipeComponent2D):
             _sum_by_group(idx_active, v_mps, mf, vf, np.ones_like(idx_active))
 
         #TODO: work on velocity calculation, v is too low!
-        if fluid.is_gas:
+        if fluid.is_gas and not isinstance(fluid.all_properties['density'],
+                          fluids.FluidPropertyInter2D):
             # derived from the ideal gas law
             p_from = node_pit[from_nodes, PAMB] + node_pit[from_nodes, PINIT] * p_scale
             p_to = node_pit[to_nodes, PAMB] + node_pit[to_nodes, PINIT] * p_scale
             numerator = NORMAL_PRESSURE * pipe_pit[:, TINIT]
-            # TODO update density here as well?
-             # Bräuchte man eingentlich nicht mehr...
             normfactor_from = numerator * fluid.get_property("compressibility", p_from) \
                               / (p_from * NORMAL_TEMPERATURE)
             normfactor_to = numerator * fluid.get_property("compressibility", p_to) \
@@ -308,7 +308,7 @@ class Pipe(PipeComponent2D):
 
             gas_mode = fluid.is_gas
 
-            if gas_mode:
+            if gas_mode: #TODO: add 2D pipe here as well
                 p_scale = get_net_option(net, "p_scale")
 
                 from_nodes = pipe_pit[v_nodes, FROM_NODE].astype(np.int32)

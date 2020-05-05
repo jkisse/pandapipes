@@ -241,14 +241,12 @@ class FluidPropertyInter2D(FluidProperty):
         :return:
         :rtype:
         """
-        #Problem: interp2d returns a grid with arg1 and arg2 as axes
-        if hasattr(arg1, '__len__') & hasattr(arg2, '__len__'):
-            if (len(arg1)>1) & (len(arg2)>1):
-                # as arg1 and arg2 are values for the same junctions, only the diagonal is relevant
-                return np.diagonal(self.prop_getter(arg1, arg2))
-            else:
-                return self.prop_getter(arg1, arg2)
-        else: # if one arg has no len (= it is a scalar), interp2d return 1-dimensional array
+        # interp2d returns a grid with arg1 and arg2 as axes
+        if hasattr(arg1, '__len__') and hasattr(arg2, '__len__') and \
+                (len(arg1)>1) and (len(arg2)>1):
+            # as arg1 and arg2 are values for the same junctions, only the diagonal is relevant
+            return np.diagonal(self.prop_getter(arg1, arg2))
+        else:  # if one arg has no len (= it is a scalar), interp2d returns 1-dimensional array
             return self.prop_getter(arg1, arg2)
 
     # @classmethod

@@ -16,7 +16,7 @@ from pandapipes.idx_node import TINIT as TINIT_NODE, L, node_cols, PINIT, HEIGHT
 from pandapipes.pipeflow_setup import add_table_lookup, get_lookup, get_table_number
 from pandapipes.properties.fluids import get_fluid
 from pandapipes.component_models.auxiliaries.derivative_toolbox import calc_der_lambda, calc_lambda
-from pandapipes.toolbox import _sum_by_group
+from pandapipes.internals_toolbox import _sum_by_group
 
 
 
