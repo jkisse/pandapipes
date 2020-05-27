@@ -460,10 +460,12 @@ def call_lib(fluid):
         return Fluid(fluid, phase, density=density, viscosity=viscosity,
                      heat_capacity=heat_capacity,
                      compressibility=compressibility, der_compressibility=der_compressibility)
-    else:
+    elif fluid in os.listdir(os.path.join('pandapipes', 'properties')):
         return fluid_from_nist_table(fluid)
 
-
+    else:
+        raise AttributeError("Fluid %s not found in pandapipes/properties! It might not be "
+                             "implemented yet." %fluid)
 
 
 def fluid_from_nist_table(fluid):
