@@ -432,7 +432,7 @@ def call_lib(fluid):
     :return: Fluid - Chosen fluid with default fluid properties
     :rtype: Fluid
     """
-    if not fluid == "carbondioxide" :
+    if fluid in ["water", "air", "lgas", "hgas"]:
         def interextra_property(prop):
             return FluidPropertyInterExtra.from_path(
                 os.path.join(pp_dir, "properties", fluid, prop + ".txt"))
@@ -466,11 +466,11 @@ def call_lib(fluid):
 
 
 
-def fluid_from_nist_table(fluid="carbondioxide"):
+def fluid_from_nist_table(fluid):
     """
 
-    :param fluid:
-    :type fluid:
+    :param fluid: fluid name (name of folder in which NIST data can be found)
+    :type fluid: str
     :return:
     :rtype:
     """
@@ -496,12 +496,7 @@ def fluid_from_nist_table(fluid="carbondioxide"):
         """
         reads an prepare csv file with NIST Data
         """
-        # dic = pd.read_excel(path, sheet_name=sheets)
         df = pd.read_csv(path)
-        # for k in dic.keys():
-        #     if k[-1] == "K":  # sheet with properties' values
-        #         df = df.append(dic[k], ignore_index=True)
-        # df.drop("Temperature (C)", axis="columns", inplace=True)
         return df
 
     def rename_NIST_df(df, inplace=False):

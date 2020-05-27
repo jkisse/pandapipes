@@ -5,7 +5,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pandapipes.component_models.pipe_component_pT_prop import PipeComponent2D
+from pandapipes.component_models.abstract_models.branch_w_internals_models import BranchWInternalsComponent
 from pandapipes.properties import fluids
 from pandapipes.component_models.auxiliaries.component_toolbox import p_correction_height_air, \
     vinterp
@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-# class Pipe(BranchWInternalsComponent):
-# TODO: implement both pipe components, for 1D an 2D properties
-class Pipe(PipeComponent2D):
+class Pipe(BranchWInternalsComponent):
     """
 
     """

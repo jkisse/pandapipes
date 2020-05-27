@@ -9,6 +9,7 @@ from pandapipes.component_models.auxiliaries import build_system_matrix
 from pandapipes.idx_branch import ACTIVE as ACTIVE_BR, FROM_NODE, TO_NODE, FROM_NODE_T, \
     TO_NODE_T, VINIT, T_OUT, VINIT_T
 from pandapipes.idx_node import PINIT, TINIT, ACTIVE as ACTIVE_ND
+from pandapipes.properties import fluids
 from pandapipes.pipeflow_setup import get_net_option, get_net_options, set_net_option, \
     init_options, create_internal_results, write_internal_results, extract_all_results, \
     get_lookup, create_lookups, initialize_pit, check_connectivity, reduce_pit, \
@@ -270,7 +271,12 @@ def solve_hydraulics(net):
     branch_lookups = get_lookup(net, "branch", "from_to_active")
     for comp in net['component_list']:
         if issubclass(comp, BranchComponent):
-            comp.calculate_derivatives_hydraulic(net, branch_pit, node_pit, branch_lookups, options)
+            if hasattr(comp, "calculate_derivatives_hydraulic2d") and \
+                    isinstance(net.fluid.all_properties['density'], fluids.FluidPropertyInter2D):
+                comp.calculate_derivatives_hydraulic2d(net, branch_pit, node_pit, branch_lookups,
+                                                      options)
+            else:
+                comp.calculate_derivatives_hydraulic(net, branch_pit, node_pit, branch_lookups, options)
     jacobian, epsilon = build_system_matrix(net, branch_pit, node_pit, False)
 
     v_init_old = branch_pit[:, VINIT].copy()
