@@ -77,6 +77,20 @@ class PumpStdType(StdType):
         reg_par = regression_function(p_values, v_values, degree)
         return cls(name, reg_par)
 
+class CompressorStdType(PumpStdType):
+
+    def __init__(self, name, reg_par):
+        """
+        Basically, a compressor is like a pump for gases
+        :param name: Name of the compressor object
+        :type name: str
+        :param reg_par: If the parameters of a regression function are already determined they \
+                can be directly be set by initializing a compressor object
+        :type reg_par: List of floats
+        """
+        super(CompressorStdType, self).__init__(name, 'compressor')
+        self.reg_par = reg_par
+
 
 def add_basic_std_types(net):
     """

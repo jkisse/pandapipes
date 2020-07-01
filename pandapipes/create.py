@@ -10,10 +10,10 @@ from pandapipes.properties import call_lib, add_fluid_to_net
 from pandapower.auxiliary import get_free_id, _preserve_dtypes
 from pandapipes.properties.fluids import Fluid
 from pandapipes.std_types.std_type import PumpStdType, add_basic_std_types, add_pump_std_type, \
-    load_std_type
+    load_std_type, CompressorStdType
 from pandapipes.std_types.std_type_toolbox import regression_function
 from pandapipes.component_models import Junction, Sink, Source, Pump, Pipe, ExtGrid, \
-    HeatExchanger, Valve, CirculationPumpPressure, CirculationPumpMass
+    HeatExchanger, Valve, CirculationPumpPressure, CirculationPumpMass, Compressor
 
 try:
     import pplog as logging
@@ -909,6 +909,98 @@ def create_circ_pump_const_mass_flow(net, from_junction, to_junction, p_bar, mdo
     for col, val in v.items():
         net.circ_pump_mass.at[index, col] = val
     _preserve_dtypes(net.circ_pump_mass, dtypes)
+
+    return index
+
+# the compressor is basically copied from pumps:
+def create_compressor_from_parameters(net, from_junction, to_junction, compressor_name,
+                                      pressure_list=None, flowrate_list=None,
+                                      regression_degree=None, regression_parameters=None,
+                                      name=None, index=None, in_service=True, type="compressor",
+                                      **kwargs):
+    """
+    Adds one pump in table net["compressor"].
+
+    :param net: The net within this pump should be created
+    :type net: pandapipesNet
+    :param from_junction: ID of the junction on one side which the compressor will be connected with
+    :type from_junction: int
+    :param to_junction: ID of the junction on the other side which the compressor will be connected with
+    :type to_junction: int
+    :param pump_name: Set a name for your compressor. You will find your definied compressor under std_type in\
+            your net. The name will be given under std_type in net.compressor.
+    :type pump_name: string
+    :param pressure_list: This list contains measured pressure supporting points required \
+            to define and determine the dependencies of the compressor between pressure and volume flow. \
+            The pressure must be given in [bar]. Needs to be defined only if no compressor of standard \
+            type is selected.
+    :type pressure_list: list, default None
+    :param flowrate_list: This list contains the corresponding flowrate values to the given \
+            pressure values. Thus the length must be equal to the pressure list. Needs to be \
+            defined only if no compressor of standard type is selected. ATTENTION: The flowrate values \
+            are given in :math:`[\\frac{m^3}{h}]`.
+    :type flowrate_list: list, default None
+    :param regression_degree: The regression degree must be defined if pressure and flowrate list \
+            are given. It describes the degree of the regression function polynomial describing \
+            the behaviour of the compressor.
+    :type regression_degree: int, default None
+    :param regression_parameters: Alternatviely to taking measurement values \
+            also the already calculated regression parameters can be given. It describes the \
+            dependency between pressure and flowrate. ATTENTION: The determined parameteres must \
+            be retrieved by setting flowrate given in :math:`[\\frac{m^3}{h}]` and pressure given \
+            in bar in context.
+    :type regression_parameters: list, default None
+    :param name: A name tag for this compressor
+    :type name: str, default None
+    :param index: Force a specified ID if it is available. If None, the index one higher than the\
+            highest already existing index is selected.
+    :type index: int, default None
+    :param in_service: True for in_service or False for out of service
+    :type in_service: bool, default True
+    :param type:  type variable to classify the pump
+    :type type: str, default "compressor"
+    :param kwargs: Additional keyword arguments will be added as further columns to the\
+            net["compressor"] table
+    :type kwargs: dict
+    :return: index - The unique ID of the created element
+    :rtype: int
+
+    EXAMPLE:
+        >>> create_compressor_from_parameters(net, 0, 1, 'compressor1', pressure_list=[0,1,2,3], \
+                                        flowrate_list=[0,1,2,3], regression_degree=1)
+        >>> create_compressor_from_parameters(net, 0, 1, 'compressor2', regression_parameters=[1,0])
+
+    """
+    add_new_component(net, Compressor)
+
+    for b in [from_junction, to_junction]:
+        if b not in net["junction"].index.values:
+            raise UserWarning("Compressor %s tries to attach to non-existing junction %s" % (
+                name, b))
+
+    if index is None:
+        index = get_free_id(net["compressor"])
+    if index in net["compressor"].index:
+        raise UserWarning("A compressor with the id %s already exists" % id)
+
+    # store dtypes
+    dtypes = net.compressor.dtypes
+
+    if pressure_list is not None and flowrate_list is not None and regression_degree is not None:
+        reg_par = regression_function(pressure_list, flowrate_list, regression_degree)
+        compressor = CompressorStdType(compressor_name, reg_par)
+        add_pump_std_type(net, compressor_name, compressor)
+    elif regression_parameters is not None:
+        compressor = CompressorStdType(compressor_name, regression_parameters)
+        add_pump_std_type(net, compressor_name, compressor)
+
+    v = {"name": name, "from_junction": from_junction, "to_junction": to_junction,
+         "std_type": compressor_name, "in_service": bool(in_service), "type": type}
+    v.update(kwargs)
+    # and preserve dtypes
+    for col, val in v.items():
+        net.compressor.at[index, col] = val
+    _preserve_dtypes(net.compressor, dtypes)
 
     return index
 
