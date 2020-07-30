@@ -153,6 +153,26 @@ def add_pump_std_type(net, name, pump_object, overwrite=False):
     add_std_type(net, 'pump', name, pump_object, overwrite)
 
 
+def add_compressor_std_type(net, name, compr_object, overwrite=False):
+    """
+
+    :param net:
+    :type net:
+    :param name:
+    :type name:
+    :param compr_object:
+    :type compr_object:
+    :param overwrite:
+    :type overwrite:
+    :return:
+    :rtype:
+    """
+    if not isinstance(compr_object, CompressorStdType):
+        raise ValueError('compressor needs to be of CompressorStdType')
+
+    add_std_type(net, 'compressor', name, compr_object, overwrite)
+
+
 def add_std_type(net, std_type_category, component_name, component_object, overwrite=False):
     """
 
