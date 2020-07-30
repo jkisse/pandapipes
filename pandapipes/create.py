@@ -10,7 +10,7 @@ from pandapipes.properties import call_lib, add_fluid_to_net
 from pandapower.auxiliary import get_free_id, _preserve_dtypes
 from pandapipes.properties.fluids import Fluid
 from pandapipes.std_types.std_type import PumpStdType, add_basic_std_types, add_pump_std_type, \
-    load_std_type, CompressorStdType
+    add_compressor_std_type, load_std_type, CompressorStdType
 from pandapipes.std_types.std_type_toolbox import regression_function
 from pandapipes.component_models import Junction, Sink, Source, Pump, Pipe, ExtGrid, \
     HeatExchanger, Valve, CirculationPumpPressure, CirculationPumpMass, Compressor
@@ -913,7 +913,7 @@ def create_circ_pump_const_mass_flow(net, from_junction, to_junction, p_bar, mdo
     return index
 
 # the compressor is basically copied from pumps:
-def create_compressor_from_parameters(net, from_junction, to_junction, compressor_name,
+def create_compressor_from_parameters(net, from_junction, to_junction, compressor_type_name,
                                       pressure_list=None, flowrate_list=None,
                                       regression_degree=None, regression_parameters=None,
                                       name=None, index=None, in_service=True, type="compressor",
@@ -927,9 +927,9 @@ def create_compressor_from_parameters(net, from_junction, to_junction, compresso
     :type from_junction: int
     :param to_junction: ID of the junction on the other side which the compressor will be connected with
     :type to_junction: int
-    :param pump_name: Set a name for your compressor. You will find your definied compressor under std_type in\
-            your net. The name will be given under std_type in net.compressor.
-    :type pump_name: string
+    :param compressor_type_name: Set a name for your compressor. You will find your definied
+            compressor under std_type in your net. The name will be given under std_type in net.compressor.
+    :type compressor_type_name: string
     :param pressure_list: This list contains measured pressure supporting points required \
             to define and determine the dependencies of the compressor between pressure and volume flow. \
             The pressure must be given in [bar]. Needs to be defined only if no compressor of standard \
@@ -988,14 +988,15 @@ def create_compressor_from_parameters(net, from_junction, to_junction, compresso
 
     if pressure_list is not None and flowrate_list is not None and regression_degree is not None:
         reg_par = regression_function(pressure_list, flowrate_list, regression_degree)
-        compressor = CompressorStdType(compressor_name, reg_par)
-        add_pump_std_type(net, compressor_name, compressor)
+        compressor = CompressorStdType(compressor_type_name, reg_par)
+        add_compressor_std_type(net, compressor_type_name, compressor)
+        # add_pump_std_type(net, compressor_type_name, compressor)
     elif regression_parameters is not None:
-        compressor = CompressorStdType(compressor_name, regression_parameters)
-        add_pump_std_type(net, compressor_name, compressor)
+        compressor = CompressorStdType(compressor_type_name, regression_parameters)
+        add_compressor_std_type(net, compressor_type_name, compressor)
 
     v = {"name": name, "from_junction": from_junction, "to_junction": to_junction,
-         "std_type": compressor_name, "in_service": bool(in_service), "type": type}
+         "std_type": compressor_type_name, "in_service": bool(in_service), "type": type}
     v.update(kwargs)
     # and preserve dtypes
     for col, val in v.items():
