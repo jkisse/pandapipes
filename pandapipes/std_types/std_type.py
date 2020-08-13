@@ -8,6 +8,7 @@ import numpy as np
 from pandapipes import pp_dir
 from pandapower.io_utils import JSONSerializableClass
 from pandapipes.std_types.std_type_toolbox import get_data, get_p_v_values, regression_function
+from pandapipes.constants import R_UNIVERSAL
 
 try:
     import pplog as logging
@@ -76,6 +77,26 @@ class PumpStdType(StdType):
         p_values, v_values, degree = get_p_v_values(path)
         reg_par = regression_function(p_values, v_values, degree)
         return cls(name, reg_par)
+
+    def get_isothermal_compression_work(self, p1, p2, t1, compressibility):
+        """
+        Work required for ideal isothermal compression of real gas.
+        :param p1:
+        :type p1:
+        :param p2:
+        :type p2:
+        :param t1:
+        :type t1:
+        :param compressibility:
+        :type compressibility:
+        :return:
+        :rtype:
+        """
+        w_id_isoth = R_UNIVERSAL * t1 * np.log(p2/p1) # see Cerbe & Lendt, Eq. 5.12
+        w_real_isoth = w_id_isoth * compressibility
+
+        return w_real_isoth
+
 
 class CompressorStdType(PumpStdType):
 

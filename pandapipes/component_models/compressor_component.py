@@ -85,10 +85,15 @@ class Compressor(BranchWZeroLengthComponent):
                               / (p_mean * NORMAL_TEMPERATURE)
             v_mean = v_mps * normfactor_mean
         else:
-            v_mean = v_mps
+            raise UserWarning("Compressors do not work with liquid fluids.")
         vol = v_mean * area
+
+        # get the standard type for each compressor
         fcts = itemgetter(*std_types)(net['std_type']['compressor'])
         fcts = [fcts] if not isinstance(fcts, tuple) else fcts
+
+        # use the get_pressure function of the standard type to calculate the pressure lift from
+        # the volume flow
         pl = np.array(list(map(lambda x, y: x.get_pressure(y), fcts, vol)))
         compressor_pit[:, PL] = pl
 
