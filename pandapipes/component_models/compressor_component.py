@@ -64,17 +64,21 @@ class Compressor(BranchWZeroLengthComponent):
         :return: power stroke
         :rtype: float
         """
-        area = compressor_pit[:, AREA]
-        idx = compressor_pit[:, STD_TYPE].astype(int)
+        fluid = get_fluid(net)
+
+        # get necessary parameters from pandapipes internal table (pit):
+        area = compressor_pit[:, AREA] # TODO: what is this?
+        idx = compressor_pit[:, STD_TYPE].astype(int) # TODO: what is this?
         std_types = np.array(list(net.std_type['compressor'].keys()))[idx]
-        p_scale = get_net_option(net, "p_scale")
         from_nodes = compressor_pit[:, FROM_NODE].astype(np.int32)
         to_nodes = compressor_pit[:, TO_NODE].astype(np.int32)
-        fluid = get_fluid(net)
+        v_mps = compressor_pit[:, VINIT]
+
+        # get absolute pressure in Pa:
+        p_scale = get_net_option(net, "p_scale") # TODO: what is this?
         p_from = node_pit[from_nodes, PAMB] + node_pit[from_nodes, PINIT] * p_scale
         p_to = node_pit[to_nodes, PAMB] + node_pit[to_nodes, PINIT] * p_scale
         numerator = NORMAL_PRESSURE * compressor_pit[:, TINIT]
-        v_mps = compressor_pit[:, VINIT]
         if fluid.is_gas:
             mask = ~np.isclose(p_from, p_to)
             p_mean = np.empty_like(p_to)
