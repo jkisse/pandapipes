@@ -47,7 +47,7 @@ class Compressor(BranchWZeroLengthComponent):
         std_type, pos = np.where(net[cls.table_name()]['std_type'].values
                                  == std_types_lookup[:, np.newaxis])
         compressor_pit[pos, STD_TYPE] = std_type
-        compressor_pit[:, D] = 0.1
+        compressor_pit[:, D] = 0.9  # TODO: what is this -> Dummy
         compressor_pit[:, AREA] = compressor_pit[:, D] ** 2 * np.pi / 4
         compressor_pit[:, LC] = 0
 
@@ -66,20 +66,23 @@ class Compressor(BranchWZeroLengthComponent):
         """
         fluid = get_fluid(net)
 
+        # calculate the 'real' velocity and volumen flow:
+
         # get necessary parameters from pandapipes internal table (pit):
-        area = compressor_pit[:, AREA] # TODO: what is this?
-        idx = compressor_pit[:, STD_TYPE].astype(int) # TODO: what is this?
+        area = compressor_pit[:, AREA] # TODO: what is this? -> (dummy) only relevant for v
+        idx = compressor_pit[:, STD_TYPE].astype(int) # TODO: what is this? -> lookup, numeric ID
+        # of std type
         std_types = np.array(list(net.std_type['compressor'].keys()))[idx]
         from_nodes = compressor_pit[:, FROM_NODE].astype(np.int32)
         to_nodes = compressor_pit[:, TO_NODE].astype(np.int32)
         v_mps = compressor_pit[:, VINIT]
 
         # get absolute pressure in Pa:
-        p_scale = get_net_option(net, "p_scale") # TODO: what is this?
+        p_scale = get_net_option(net, "p_scale") # TODO: what is this? -> DLo fragen
         p_from = node_pit[from_nodes, PAMB] + node_pit[from_nodes, PINIT] * p_scale
         p_to = node_pit[to_nodes, PAMB] + node_pit[to_nodes, PINIT] * p_scale
-        numerator = NORMAL_PRESSURE * compressor_pit[:, TINIT]
-        if fluid.is_gas:
+        numerator = NORMAL_PRESSURE * compressor_pit[:, TINIT] # TODO: what is this? -> normfactor
+        if fluid.is_gas: # TODO: what is happening here?
             mask = ~np.isclose(p_from, p_to)
             p_mean = np.empty_like(p_to)
             p_mean[~mask] = p_from[~mask]
@@ -100,6 +103,9 @@ class Compressor(BranchWZeroLengthComponent):
         # the volume flow
         pl = np.array(list(map(lambda x, y: x.get_pressure(y), fcts, vol)))
         compressor_pit[:, PL] = pl
+        # TODO: add mass flow in result table
+        # TODO: add pressure at from_junction and to_junction to result table
+
 
     @classmethod
     def calculate_temperature_lift(cls, net, compressor_pit, node_pit):
