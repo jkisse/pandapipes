@@ -101,7 +101,8 @@ class Compressor(BranchWZeroLengthComponent):
 
         # use the get_pressure function of the standard type to calculate the pressure lift from
         # the volume flow
-        pl = np.array(list(map(lambda x, y: x.get_pressure(y), fcts, vol)))
+        # TODO: vol immer > 0
+        pl = np.array(list(map(lambda x, y: x.get_pressure(y), fcts, abs(vol))))
         compressor_pit[:, PL] = pl
         # TODO: add mass flow in result table
         # TODO: add pressure at from_junction and to_junction to result table

@@ -59,8 +59,11 @@ class PumpStdType(StdType):
                 in [bar]
         :rtype: float
         """
+        vdot_m3_per_s  = abs(vdot_m3_per_s)  # characteristic line is not valid for vol < 0
         n = np.arange(len(self.reg_par), 0, -1)
-        p = sum(self.reg_par * (vdot_m3_per_s * 3600) ** (n - 1))
+        # no negative pressure lift! (bypassing always allowed)
+        # /1 to ensure float format
+        p = max([0, sum(self.reg_par * (vdot_m3_per_s/1 * 3600) ** (n - 1))])
         return p
 
     @classmethod
