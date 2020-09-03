@@ -59,8 +59,12 @@ class PumpStdType(StdType):
                 in [bar]
         :rtype: float
         """
-        vdot_m3_per_s  = abs(vdot_m3_per_s)  # characteristic line is not valid for vol < 0
         n = np.arange(len(self.reg_par), 0, -1)
+        # no reverse flow - for vdot < 0, assume bypassing
+        if vdot_m3_per_s < 0:
+            logger.debug("Reverse flow observed in a %s pump. "
+                         "Bypassing without pressure change is assumed" % str(self.name))
+            return 0
         # no negative pressure lift! (bypassing always allowed)
         # /1 to ensure float format
         p = max([0, sum(self.reg_par * (vdot_m3_per_s/1 * 3600) ** (n - 1))])
@@ -108,7 +112,7 @@ class PumpStdType(StdType):
 
 class CompressorStdType(PumpStdType):
 
-    def __init__(self, name, reg_par):
+    def __init__(self, name, reg_par, symmetric_characteristic_curve=False):
         """
         Basically, a compressor is like a pump for gases
         :param name: Name of the compressor object
@@ -116,10 +120,29 @@ class CompressorStdType(PumpStdType):
         :param reg_par: If the parameters of a regression function are already determined they \
                 can be directly be set by initializing a compressor object
         :type reg_par: List of floats
+        :param symmetric_characteristic_curve: save behaviour for positive and negative volume flows
+        :type  symmetric_characteristic_curve: bool
         """
         super(CompressorStdType, self).__init__(name, 'compressor')
         self.reg_par = reg_par
+        self.symmetric_characteristic_curve = symmetric_characteristic_curve
 
+    def get_pressure(self, vdot_m3_per_s):
+        """
+
+        :param vdot_m3_per_s: Volume flow rate of a fluid in [m^3/s]
+        :type vdot_m3_per_s: float
+        :return: This function returns the corresponding pressure to the given volume flow rate \
+                in [bar]
+        :rtype: float
+        """
+        if self.symmetric_characteristic_curve:
+            vdot_m3_per_s  = abs(vdot_m3_per_s)
+        n = np.arange(len(self.reg_par), 0, -1)
+        # no negative pressure lift! (bypassing always allowed)
+        # /1 to ensure float format
+        p = max([0, sum(self.reg_par * (vdot_m3_per_s/1 * 3600) ** (n - 1))])
+        return p
 
 def add_basic_std_types(net):
     """

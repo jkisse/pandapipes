@@ -922,6 +922,7 @@ def create_circ_pump_const_mass_flow(net, from_junction, to_junction, p_bar, mdo
 def create_compressor_from_parameters(net, from_junction, to_junction, compressor_type_name,
                                       pressure_list=None, flowrate_list=None,
                                       regression_degree=None, regression_parameters=None,
+                                      symmetric_characteristic_curve=False,
                                       name=None, index=None, in_service=True, type="compressor",
                                       **kwargs):
     """
@@ -994,11 +995,12 @@ def create_compressor_from_parameters(net, from_junction, to_junction, compresso
 
     if pressure_list is not None and flowrate_list is not None and regression_degree is not None:
         reg_par = regression_function(pressure_list, flowrate_list, regression_degree)
-        compressor = CompressorStdType(compressor_type_name, reg_par)
+        compressor = CompressorStdType(compressor_type_name, reg_par, symmetric_characteristic_curve)
         add_compressor_std_type(net, compressor_type_name, compressor)
         # add_pump_std_type(net, compressor_type_name, compressor)
     elif regression_parameters is not None:
-        compressor = CompressorStdType(compressor_type_name, regression_parameters)
+        compressor = CompressorStdType(compressor_type_name, regression_parameters,
+                                       symmetric_characteristic_curve)
         add_compressor_std_type(net, compressor_type_name, compressor)
 
     v = {"name": name, "from_junction": from_junction, "to_junction": to_junction,
