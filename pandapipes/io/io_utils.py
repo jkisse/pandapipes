@@ -14,6 +14,7 @@ from pandapipes.pandapipes_net import pandapipesNet
 from pandapower.io_utils import pp_hook
 from pandapower.io_utils import with_signature, to_serializable, JSONSerializableClass, \
     isinstance_partial as ppow_isinstance, FromSerializableRegistry, PPJSONDecoder
+from copy import deepcopy
 
 try:
     import pplog as logging
@@ -21,21 +22,6 @@ except ImportError:
     import logging
 
 logger = logging.getLogger(__name__)
-
-try:
-    import fiona
-    import geopandas
-
-    GEOPANDAS_INSTALLED = True
-except ImportError:
-    GEOPANDAS_INSTALLED = False
-
-try:
-    import shapely.geometry
-
-    SHAPELY_INSTALLED = True
-except (ImportError, OSError):
-    SHAPELY_INSTALLED = False
 
 
 def isinstance_partial(obj, cls):
@@ -45,7 +31,7 @@ def isinstance_partial(obj, cls):
 
 
 class FromSerializableRegistryPpipe(FromSerializableRegistry):
-    from_serializable = FromSerializableRegistry.from_serializable
+    from_serializable = deepcopy(FromSerializableRegistry.from_serializable)
     class_name = ''
     module_name = ''
 
