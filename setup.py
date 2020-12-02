@@ -42,7 +42,7 @@ setup(
     url='http://www.pandapipes.org',
     license='BSD',
     install_requires=[
-        "pandapower @ git+https://github.com/jkisse/pandapower@v2.4.1-beta#egg=pandapower",
+        "pandapower @ git+https://github.com/e2nIEE/pandapower@develop#egg=pandapower",
                       "matplotlib"],
     extras_require={"docs": ["numpydoc", "sphinx", "sphinx_rtd_theme", "sphinxcontrib.bibtex"],
                     "plotting": ["plotly", "python-igraph"],
