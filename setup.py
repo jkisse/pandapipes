@@ -41,7 +41,9 @@ setup(
     long_description=long_description,
     url='http://www.pandapipes.org',
     license='BSD',
-    install_requires=["pandapower>=2.4.0", "matplotlib"],
+    install_requires=[
+        "pandapower @ git+https://github.com/jkisse/pandapower@v2.4.1-beta#egg=pandapower",
+                      "matplotlib"],
     extras_require={"docs": ["numpydoc", "sphinx", "sphinx_rtd_theme", "sphinxcontrib.bibtex"],
                     "plotting": ["plotly", "python-igraph"],
                     "test": ["pytest", "pytest-xdist"]},
