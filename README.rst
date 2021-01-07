@@ -64,6 +64,8 @@ Energy Management and Power System Operation, University of Kassel.
     :target: https://www.iee.fraunhofer.de/en.html
     :width: 300em
 
+|
+
 .. image:: https://www.uni-kassel.de/uni/fileadmin/sys/resources/images/logo/logo-main.svg
     :target: https://www.uni-kassel.de/
     :width: 300em
