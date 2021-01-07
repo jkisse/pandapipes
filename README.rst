@@ -64,13 +64,13 @@ Energy Management and Power System Operation, University of Kassel.
     :target: https://www.iee.fraunhofer.de/en.html
     :width: 300em
 
-.. image:: https://www.uni-kassel.de/eecs/fileadmin/datas/fb16/Fachgebiete/energiemanagement/e2n.png
-    :target: https://www.uni-kassel.de/eecs/en/fachgebiete/e2n/home.html
-    :width: 300em
-
-.. image:: https://www.uni-kassel.de/logo/unilogo.jpg
+.. image:: https://www.uni-kassel.de/uni/fileadmin/sys/resources/images/logo/logo-main.svg
     :target: https://www.uni-kassel.de/
     :width: 300em
+
+.. image:: https://www.uni-kassel.de/eecs/fileadmin/datas/fb16/Fachgebiete/energiemanagement/e2n.png
+    :target: https://www.uni-kassel.de/eecs/en/fachgebiete/e2n/home.html
+    :width: 200em
 
 |
 
