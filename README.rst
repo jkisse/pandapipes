@@ -62,19 +62,17 @@ Energy Management and Power System Operation, University of Kassel.
 
 .. image:: https://www.uni-kassel.de/eecs/fileadmin/datas/fb16/Fachgebiete/energiemanagement/iee.png
     :target: https://www.iee.fraunhofer.de/en.html
-    :width: 28%
-    :align: left
+
+|
 
 .. image:: https://www.uni-kassel.de/uni/fileadmin/sys/resources/images/logo/logo-main.svg
     :target: https://www.uni-kassel.de/
-    :width: 30%
-    :align: right
+
+|
 
 .. image:: https://www.uni-kassel.de/eecs/fileadmin/datas/fb16/Fachgebiete/energiemanagement/e2n.png
     :target: https://www.uni-kassel.de/eecs/en/fachgebiete/e2n/home.html
-    :width: 20%
-    :align: right
-
+    :width: 25%
 |
 
 We welcome contributions to pandapipes of any kind - if you want to contribute, please check out
