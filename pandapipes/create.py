@@ -4,8 +4,9 @@
 
 import numpy as np
 import pandas as pd
+
 from pandapipes.component_models import Junction, Sink, Source, Pump, Pipe, ExtGrid, \
-    HeatExchanger, Valve, CirculationPumpPressure, CirculationPumpMass
+    HeatExchanger, Valve, CirculationPumpPressure, CirculationPumpMass, Compressor
 from pandapipes.component_models.auxiliaries.component_toolbox import add_new_component
 from pandapipes.pandapipes_net import pandapipesNet, get_basic_net_entries, add_default_components
 from pandapipes.properties import call_lib
@@ -1083,6 +1084,51 @@ def create_valves(net, from_junctions, to_junctions, diameter_m, opened=True, lo
 
     return index
 
+
+def create_compressor_br(net, from_junction, to_junction, boost_ratio, name=None, index=None,
+                         in_service=True, type="booster", **kwargs):
+    """
+    Adds a compressor to net["compressor"] whith pressure lift rel. to (p_in + p_ambient) (boost ratio)
+
+    :param net: The net within this compressor should be created
+    :type net: pandapipesNet
+    :param from_junction: ID of the junction on one side which the compressor will be connected with
+    :type from_junction: int
+    :param to_junction: ID of the junction on the other side which the compressor will be connected with
+    :type to_junction: int
+    # :param boost_ratio: There are currently three different std_types. This std_types are P1, P2, P3.\
+    #         Each of them describes a specific pump behaviour setting volume flow and pressure in\
+    #         context.
+    :type boost_ratio: float
+    :param name: A name tag for this compressor
+    :type name: str, default None
+    :param index: Force a specified ID if it is available. If None, the index one higher than the\
+            highest already existing index is selected.
+    :type index: int, default None
+    :param in_service: True for in_service or False for out of service
+    :type in_service: bool, default True
+    :param type:  Type variable to classify the compressor (not relevant for calculations)
+    :type type: str, default "booster"
+    :param kwargs: Additional keyword arguments will be added as further columns to the\
+            net["compressor"] table
+    :type kwargs: dict
+    :return: index - The unique ID of the created element
+    :rtype: int
+
+    EXAMPLE:
+        >>> create_compressor_br(net, 0, 1, boost_ratio=1.4)
+
+    """
+    add_new_component(net, Compressor)
+
+    index = _get_index_with_check(net, "compressor", index)
+    check_branch(net, "Compressor", index, from_junction, to_junction)
+
+    v = {"name": name, "from_junction": from_junction, "to_junction": to_junction,
+         "boost_ratio": boost_ratio, "in_service": bool(in_service), "type": type}
+    _set_entries(net, "compressor", index, **v, **kwargs)
+
+    return index
 
 def create_fluid_from_lib(net, name, overwrite=True):
     """
