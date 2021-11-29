@@ -39,8 +39,7 @@
    :alt: pepy
 
 .. image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/e2nIEE/pandapipes/master?filepath=tutorials
-   :alt: binder
+   :target: https://mybinder.org/v2/gh/jkisse/pandapipes/tree/workshop_edb/workshop_files/HEAD
 
 
 A pipeflow calculation tool that complements `pandapower <https://www.pandapower.org>`_ in the
