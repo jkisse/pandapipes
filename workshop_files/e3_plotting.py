@@ -52,12 +52,6 @@ def plot_lineloading(net, show_loadings=False):
     lc = ppplot.create_line_collection(net, net.line.index, zorder=1, cmap=cmap, norm=norm,
                                       linewidths=2)
 
-    if hasattr(net, "dcline"):
-        hvdcc = ppplot.create_dcline_collection(net, net.dcline.index, zorder=1, cmap=cmap, norm=norm,
-                                               linewidths=2)
-    else:
-        hvdcc = None
-
     if show_loadings:
         loading_lst = net.res_line.loading_percent.tolist()  # list of all junction indices
         coords = zip(0.5*net.bus_geodata.x.loc[net.line.from_bus].values
@@ -73,7 +67,7 @@ def plot_lineloading(net, show_loadings=False):
     else:
         loadingcol = None
 
-    ppplot.draw_collections([lc, hvdcc, loadingcol], figsize=(8,6))
+    ppplot.draw_collections([lc, loadingcol], figsize=(8,6))
 
 
 if __name__ == '__main__':
